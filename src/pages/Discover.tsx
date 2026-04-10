@@ -180,6 +180,12 @@ const Discover = () => {
           </div>
 
           <div className="absolute bottom-0 left-0 right-0 p-6 text-card">
+            {/* Compatibility badge */}
+            {(profile as any)._score > 0 && (
+              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold mb-2" style={{ background: "rgba(197,148,58,0.85)", color: "white" }}>
+                ✨ {(profile as any)._score}% compatível
+              </div>
+            )}
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-2xl font-serif font-semibold" style={{ color: "white" }}>
                 {profile.nome || "Anônimo"}{profile.idade ? `, ${profile.idade}` : ""}
