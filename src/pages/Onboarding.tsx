@@ -112,10 +112,14 @@ const Onboarding = () => {
       toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
       return;
     }
+    if (!verDoc || !verSelfie || !verSelfieDoc) {
+      toast({ title: "Erro", description: "Envie todos os documentos de verificação.", variant: "destructive" });
+      return;
+    }
 
     setSaving(true);
     try {
-      // Upload photos
+      // Upload profile photos
       let profilePhotoUrl = "";
       for (let i = 0; i < photos.length; i++) {
         if (!photos[i]) continue;
@@ -134,7 +138,6 @@ const Onboarding = () => {
 
         if (i === 0) profilePhotoUrl = urlData.publicUrl;
 
-        // Save to photos table
         await supabase.from("photos").insert({
           user_id: user.id,
           photo_url: urlData.publicUrl,
@@ -143,7 +146,25 @@ const Onboarding = () => {
         });
       }
 
-      // Upsert profile (creates if missing, updates if exists)
+      // Upload verification documents
+      const ts = Date.now();
+      const getExt = (f: File) => f.name.split(".").pop();
+      const verDocPath = `${user.id}/doc_${ts}.${getExt(verDoc)}`;
+      const verSelfiePath = `${user.id}/selfie_${ts}.${getExt(verSelfie)}`;
+      const verSelfieDocPath = `${user.id}/selfie_doc_${ts}.${getExt(verSelfieDoc)}`;
+
+      const [v1, v2, v3] = await Promise.all([
+        supabase.storage.from("verification-documents").upload(verDocPath, verDoc),
+        supabase.storage.from("verification-documents").upload(verSelfiePath, verSelfie),
+        supabase.storage.from("verification-documents").upload(verSelfieDocPath, verSelfieDoc),
+      ]);
+      if (v1.error) throw v1.error;
+      if (v2.error) throw v2.error;
+      if (v3.error) throw v3.error;
+
+      const getUrl = (p: string) => supabase.storage.from("verification-documents").getPublicUrl(p).data.publicUrl;
+
+      // Upsert profile
       const { error } = await supabase.from("profiles").upsert({
         id: user.id,
         nome: name,
@@ -159,14 +180,24 @@ const Onboarding = () => {
         frequencia_igreja: answers.church || null,
         email: user.email || null,
       }, { onConflict: "id" });
-
       if (error) throw error;
 
-      toast({
-        title: "Perfil criado com sucesso! 🙏",
-        description: "Agora vamos verificar sua identidade.",
+      // Insert verification
+      const { error: verError } = await supabase.from("verification").insert({
+        user_id: user.id,
+        document_photo: getUrl(verDocPath),
+        selfie_photo: getUrl(verSelfiePath),
+        selfie_with_document: getUrl(verSelfieDocPath),
+        status: "pending",
+        created_at: new Date().toISOString(),
       });
-      navigate("/app/verification");
+      if (verError) throw verError;
+
+      toast({
+        title: "Perfil criado e verificação enviada! 🙏",
+        description: "Analisaremos seus documentos em breve.",
+      });
+      navigate("/app");
     } catch (error: any) {
       toast({
         title: "Erro ao salvar",
@@ -185,13 +216,14 @@ const Onboarding = () => {
       const ageNum = parseInt(age);
       return name.trim() && age.trim() && ageNum >= 18 && state && city.trim();
     }
-    if (step === 3) return photos.filter(Boolean).length >= 3; // At least 3 photos required
+    if (step === 3) return photos.filter(Boolean).length >= 3;
     if (step === 4) return selectedInterests.length >= 3;
     if (step === 5) return true;
+    if (step === 6) return !!verDoc && !!verSelfie && !!verSelfieDoc;
     return true;
   };
 
-  const totalSteps = 6;
+  const totalSteps = 7;
 
   const SelectField = ({ label, value, onChange, options, placeholder }: {
     label: string; value: string; onChange: (v: string) => void; options: string[]; placeholder: string;
