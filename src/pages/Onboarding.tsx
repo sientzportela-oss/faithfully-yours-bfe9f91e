@@ -379,6 +379,14 @@ const Onboarding = () => {
           </button>
         ))}
       </div>
+      {(() => {
+        const count = photos.filter(Boolean).length;
+        return (
+          <div className={`text-center text-sm font-medium ${count >= 3 ? "text-accent" : "text-destructive"}`}>
+            {count}/3 fotos obrigatórias {count >= 3 ? "✓" : "— adicione mais"}
+          </div>
+        );
+      })()}
       <p className="text-xs text-center text-muted-foreground">
         A primeira foto será seu perfil principal. Fotos de rosto são recomendadas.
       </p>
@@ -438,6 +446,86 @@ const Onboarding = () => {
             </div>
           </div>
         ))}
+      </div>
+    </div>,
+
+    // Step 6: Verification (mandatory)
+    <div key="verification" className="space-y-6 animate-fade-in max-w-md mx-auto w-full">
+      <div className="text-center space-y-3 mb-6">
+        <ShieldCheck className="w-12 h-12 text-primary mx-auto" />
+        <h2 className="text-2xl font-serif font-semibold text-foreground">Verificação de Identidade</h2>
+        <p className="text-muted-foreground text-sm">
+          Para sua segurança, envie os 3 documentos abaixo. Esta etapa é <strong>obrigatória</strong>.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        {/* Document */}
+        <div
+          onClick={() => verDocRef.current?.click()}
+          className="bg-card rounded-xl border-2 border-dashed border-border hover:border-primary/50 p-5 text-center cursor-pointer transition-colors"
+        >
+          <input ref={verDocRef} type="file" accept="image/*" className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) { setVerDoc(f); setVerDocPreview(URL.createObjectURL(f)); }
+            }}
+          />
+          {verDocPreview ? (
+            <img src={verDocPreview} alt="Documento" className="w-28 h-18 rounded-lg object-cover mx-auto mb-2" />
+          ) : (
+            <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+          )}
+          <p className="text-sm font-medium text-foreground">📄 Documento com foto</p>
+          <p className="text-xs text-muted-foreground">RG, CNH ou passaporte</p>
+        </div>
+
+        {/* Selfie */}
+        <div
+          onClick={() => verSelfieRef.current?.click()}
+          className="bg-card rounded-xl border-2 border-dashed border-border hover:border-primary/50 p-5 text-center cursor-pointer transition-colors"
+        >
+          <input ref={verSelfieRef} type="file" accept="image/*" capture="user" className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) { setVerSelfie(f); setVerSelfiePreview(URL.createObjectURL(f)); }
+            }}
+          />
+          {verSelfiePreview ? (
+            <img src={verSelfiePreview} alt="Selfie" className="w-20 h-20 rounded-full object-cover mx-auto mb-2" />
+          ) : (
+            <Camera className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+          )}
+          <p className="text-sm font-medium text-foreground">📸 Selfie do rosto</p>
+          <p className="text-xs text-muted-foreground">Tire uma foto clara do seu rosto</p>
+        </div>
+
+        {/* Selfie with document */}
+        <div
+          onClick={() => verSelfieDocRef.current?.click()}
+          className="bg-card rounded-xl border-2 border-dashed border-border hover:border-primary/50 p-5 text-center cursor-pointer transition-colors"
+        >
+          <input ref={verSelfieDocRef} type="file" accept="image/*" capture="user" className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) { setVerSelfieDoc(f); setVerSelfieDocPreview(URL.createObjectURL(f)); }
+            }}
+          />
+          {verSelfieDocPreview ? (
+            <img src={verSelfieDocPreview} alt="Selfie com doc" className="w-28 h-20 rounded-lg object-cover mx-auto mb-2" />
+          ) : (
+            <UserCheck className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+          )}
+          <p className="text-sm font-medium text-foreground">🤳 Selfie segurando o documento</p>
+          <p className="text-xs text-muted-foreground">Segure o documento ao lado do rosto</p>
+        </div>
+      </div>
+
+      <div className="bg-secondary/50 rounded-xl p-4 flex gap-3">
+        <ShieldCheck className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+        <p className="text-xs text-muted-foreground">
+          Seus documentos são analisados com segurança e não são compartilhados. A verificação garante um ambiente confiável para todos.
+        </p>
       </div>
     </div>,
   ];
