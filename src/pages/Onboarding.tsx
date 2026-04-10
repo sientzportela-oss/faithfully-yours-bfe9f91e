@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import eloLogo from "@/assets/elo-logo.png";
-import { ArrowLeft, ArrowRight, Check, Camera, ChevronDown } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Camera, ChevronDown, ShieldCheck, FileText, UserCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
