@@ -1,17 +1,5 @@
-import Navbar from "@/components/Navbar";
-import HeroSection from "@/components/HeroSection";
-import FeaturesSection from "@/components/FeaturesSection";
-import Footer from "@/components/Footer";
+import LandingHero from "@/components/LandingHero";
 
-const Index = () => {
-  return (
-    <div className="min-h-screen gradient-hero">
-      <Navbar />
-      <HeroSection />
-      <FeaturesSection />
-      <Footer />
-    </div>
-  );
-};
+const Index = () => <LandingHero />;
 
 export default Index;
