@@ -55,6 +55,15 @@ const Onboarding = () => {
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [ageError, setAgeError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [verDoc, setVerDoc] = useState<File | null>(null);
+  const [verSelfie, setVerSelfie] = useState<File | null>(null);
+  const [verSelfieDoc, setVerSelfieDoc] = useState<File | null>(null);
+  const [verDocPreview, setVerDocPreview] = useState<string | null>(null);
+  const [verSelfiePreview, setVerSelfiePreview] = useState<string | null>(null);
+  const [verSelfieDocPreview, setVerSelfieDocPreview] = useState<string | null>(null);
+  const verDocRef = useRef<HTMLInputElement>(null);
+  const verSelfieRef = useRef<HTMLInputElement>(null);
+  const verSelfieDocRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
