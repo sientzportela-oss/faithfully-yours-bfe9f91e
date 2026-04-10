@@ -573,7 +573,7 @@ const Onboarding = () => {
             }}
           >
             {step === totalSteps - 1
-              ? saving ? "Salvando..." : "Entrar no Elo 🙏"
+              ? saving ? "Enviando..." : "Enviar e verificar 🛡️"
               : "Continuar"}{" "}
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
