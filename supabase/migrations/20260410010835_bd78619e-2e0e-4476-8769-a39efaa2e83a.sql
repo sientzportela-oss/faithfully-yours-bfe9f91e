@@ -1,0 +1,1 @@
+ALTER TABLE public.verification ADD COLUMN IF NOT EXISTS selfie_with_document text;

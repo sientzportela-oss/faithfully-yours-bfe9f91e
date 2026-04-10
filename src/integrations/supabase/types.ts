@@ -807,6 +807,7 @@ export type Database = {
           id: string
           reviewed_at: string | null
           selfie_photo: string | null
+          selfie_with_document: string | null
           status: string | null
           user_id: string
         }
@@ -816,6 +817,7 @@ export type Database = {
           id?: string
           reviewed_at?: string | null
           selfie_photo?: string | null
+          selfie_with_document?: string | null
           status?: string | null
           user_id: string
         }
@@ -825,6 +827,7 @@ export type Database = {
           id?: string
           reviewed_at?: string | null
           selfie_photo?: string | null
+          selfie_with_document?: string | null
           status?: string | null
           user_id?: string
         }
