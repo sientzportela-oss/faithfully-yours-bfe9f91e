@@ -154,9 +154,9 @@ const Onboarding = () => {
 
       toast({
         title: "Perfil criado com sucesso! 🙏",
-        description: "Que Deus abençoe sua jornada no Elo.",
+        description: "Agora vamos verificar sua identidade.",
       });
-      navigate("/app");
+      navigate("/app/verification");
     } catch (error: any) {
       toast({
         title: "Erro ao salvar",
@@ -175,7 +175,7 @@ const Onboarding = () => {
       const ageNum = parseInt(age);
       return name.trim() && age.trim() && ageNum >= 18 && state && city.trim();
     }
-    if (step === 3) return true;
+    if (step === 3) return photos.filter(Boolean).length >= 3; // At least 3 photos required
     if (step === 4) return selectedInterests.length >= 3;
     if (step === 5) return true;
     return true;
@@ -309,7 +309,7 @@ const Onboarding = () => {
     <div key="photos" className="space-y-6 animate-fade-in max-w-md mx-auto w-full">
       <div className="text-center space-y-2 mb-8">
         <h2 className="text-2xl font-serif font-semibold text-foreground">Suas fotos</h2>
-        <p className="text-muted-foreground text-sm">Adicione até 6 fotos que representem você</p>
+        <p className="text-muted-foreground text-sm">Adicione pelo menos 3 fotos (obrigatório)</p>
       </div>
       <div className="grid grid-cols-3 gap-3">
         {[...Array(6)].map((_, i) => (
