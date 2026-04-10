@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import eloLogo from "@/assets/elo-logo.png";
-import { ArrowLeft, ArrowRight, Check, Camera, ChevronDown } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Camera, ChevronDown, ShieldCheck, FileText, UserCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -54,6 +55,15 @@ const Onboarding = () => {
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [ageError, setAgeError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [verDoc, setVerDoc] = useState<File | null>(null);
+  const [verSelfie, setVerSelfie] = useState<File | null>(null);
+  const [verSelfieDoc, setVerSelfieDoc] = useState<File | null>(null);
+  const [verDocPreview, setVerDocPreview] = useState<string | null>(null);
+  const [verSelfiePreview, setVerSelfiePreview] = useState<string | null>(null);
+  const [verSelfieDocPreview, setVerSelfieDocPreview] = useState<string | null>(null);
+  const verDocRef = useRef<HTMLInputElement>(null);
+  const verSelfieRef = useRef<HTMLInputElement>(null);
+  const verSelfieDocRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -102,10 +112,14 @@ const Onboarding = () => {
       toast({ title: "Erro", description: "Você precisa estar logado.", variant: "destructive" });
       return;
     }
+    if (!verDoc || !verSelfie || !verSelfieDoc) {
+      toast({ title: "Erro", description: "Envie todos os documentos de verificação.", variant: "destructive" });
+      return;
+    }
 
     setSaving(true);
     try {
-      // Upload photos
+      // Upload profile photos
       let profilePhotoUrl = "";
       for (let i = 0; i < photos.length; i++) {
         if (!photos[i]) continue;
@@ -124,7 +138,6 @@ const Onboarding = () => {
 
         if (i === 0) profilePhotoUrl = urlData.publicUrl;
 
-        // Save to photos table
         await supabase.from("photos").insert({
           user_id: user.id,
           photo_url: urlData.publicUrl,
@@ -133,7 +146,25 @@ const Onboarding = () => {
         });
       }
 
-      // Upsert profile (creates if missing, updates if exists)
+      // Upload verification documents
+      const ts = Date.now();
+      const getExt = (f: File) => f.name.split(".").pop();
+      const verDocPath = `${user.id}/doc_${ts}.${getExt(verDoc)}`;
+      const verSelfiePath = `${user.id}/selfie_${ts}.${getExt(verSelfie)}`;
+      const verSelfieDocPath = `${user.id}/selfie_doc_${ts}.${getExt(verSelfieDoc)}`;
+
+      const [v1, v2, v3] = await Promise.all([
+        supabase.storage.from("verification-documents").upload(verDocPath, verDoc),
+        supabase.storage.from("verification-documents").upload(verSelfiePath, verSelfie),
+        supabase.storage.from("verification-documents").upload(verSelfieDocPath, verSelfieDoc),
+      ]);
+      if (v1.error) throw v1.error;
+      if (v2.error) throw v2.error;
+      if (v3.error) throw v3.error;
+
+      const getUrl = (p: string) => supabase.storage.from("verification-documents").getPublicUrl(p).data.publicUrl;
+
+      // Upsert profile
       const { error } = await supabase.from("profiles").upsert({
         id: user.id,
         nome: name,
@@ -149,14 +180,24 @@ const Onboarding = () => {
         frequencia_igreja: answers.church || null,
         email: user.email || null,
       }, { onConflict: "id" });
-
       if (error) throw error;
 
-      toast({
-        title: "Perfil criado com sucesso! 🙏",
-        description: "Agora vamos verificar sua identidade.",
+      // Insert verification
+      const { error: verError } = await supabase.from("verification").insert({
+        user_id: user.id,
+        document_photo: getUrl(verDocPath),
+        selfie_photo: getUrl(verSelfiePath),
+        selfie_with_document: getUrl(verSelfieDocPath),
+        status: "pending",
+        created_at: new Date().toISOString(),
       });
-      navigate("/app/verification");
+      if (verError) throw verError;
+
+      toast({
+        title: "Perfil criado e verificação enviada! 🙏",
+        description: "Analisaremos seus documentos em breve.",
+      });
+      navigate("/app");
     } catch (error: any) {
       toast({
         title: "Erro ao salvar",
@@ -175,13 +216,14 @@ const Onboarding = () => {
       const ageNum = parseInt(age);
       return name.trim() && age.trim() && ageNum >= 18 && state && city.trim();
     }
-    if (step === 3) return photos.filter(Boolean).length >= 3; // At least 3 photos required
+    if (step === 3) return photos.filter(Boolean).length >= 3;
     if (step === 4) return selectedInterests.length >= 3;
     if (step === 5) return true;
+    if (step === 6) return !!verDoc && !!verSelfie && !!verSelfieDoc;
     return true;
   };
 
-  const totalSteps = 6;
+  const totalSteps = 7;
 
   const SelectField = ({ label, value, onChange, options, placeholder }: {
     label: string; value: string; onChange: (v: string) => void; options: string[]; placeholder: string;
@@ -337,6 +379,14 @@ const Onboarding = () => {
           </button>
         ))}
       </div>
+      {(() => {
+        const count = photos.filter(Boolean).length;
+        return (
+          <div className={`text-center text-sm font-medium ${count >= 3 ? "text-accent" : "text-destructive"}`}>
+            {count}/3 fotos obrigatórias {count >= 3 ? "✓" : "— adicione mais"}
+          </div>
+        );
+      })()}
       <p className="text-xs text-center text-muted-foreground">
         A primeira foto será seu perfil principal. Fotos de rosto são recomendadas.
       </p>
@@ -398,6 +448,86 @@ const Onboarding = () => {
         ))}
       </div>
     </div>,
+
+    // Step 6: Verification (mandatory)
+    <div key="verification" className="space-y-6 animate-fade-in max-w-md mx-auto w-full">
+      <div className="text-center space-y-3 mb-6">
+        <ShieldCheck className="w-12 h-12 text-primary mx-auto" />
+        <h2 className="text-2xl font-serif font-semibold text-foreground">Verificação de Identidade</h2>
+        <p className="text-muted-foreground text-sm">
+          Para sua segurança, envie os 3 documentos abaixo. Esta etapa é <strong>obrigatória</strong>.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        {/* Document */}
+        <div
+          onClick={() => verDocRef.current?.click()}
+          className="bg-card rounded-xl border-2 border-dashed border-border hover:border-primary/50 p-5 text-center cursor-pointer transition-colors"
+        >
+          <input ref={verDocRef} type="file" accept="image/*" className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) { setVerDoc(f); setVerDocPreview(URL.createObjectURL(f)); }
+            }}
+          />
+          {verDocPreview ? (
+            <img src={verDocPreview} alt="Documento" className="w-28 h-18 rounded-lg object-cover mx-auto mb-2" />
+          ) : (
+            <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+          )}
+          <p className="text-sm font-medium text-foreground">📄 Documento com foto</p>
+          <p className="text-xs text-muted-foreground">RG, CNH ou passaporte</p>
+        </div>
+
+        {/* Selfie */}
+        <div
+          onClick={() => verSelfieRef.current?.click()}
+          className="bg-card rounded-xl border-2 border-dashed border-border hover:border-primary/50 p-5 text-center cursor-pointer transition-colors"
+        >
+          <input ref={verSelfieRef} type="file" accept="image/*" capture="user" className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) { setVerSelfie(f); setVerSelfiePreview(URL.createObjectURL(f)); }
+            }}
+          />
+          {verSelfiePreview ? (
+            <img src={verSelfiePreview} alt="Selfie" className="w-20 h-20 rounded-full object-cover mx-auto mb-2" />
+          ) : (
+            <Camera className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+          )}
+          <p className="text-sm font-medium text-foreground">📸 Selfie do rosto</p>
+          <p className="text-xs text-muted-foreground">Tire uma foto clara do seu rosto</p>
+        </div>
+
+        {/* Selfie with document */}
+        <div
+          onClick={() => verSelfieDocRef.current?.click()}
+          className="bg-card rounded-xl border-2 border-dashed border-border hover:border-primary/50 p-5 text-center cursor-pointer transition-colors"
+        >
+          <input ref={verSelfieDocRef} type="file" accept="image/*" capture="user" className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) { setVerSelfieDoc(f); setVerSelfieDocPreview(URL.createObjectURL(f)); }
+            }}
+          />
+          {verSelfieDocPreview ? (
+            <img src={verSelfieDocPreview} alt="Selfie com doc" className="w-28 h-20 rounded-lg object-cover mx-auto mb-2" />
+          ) : (
+            <UserCheck className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+          )}
+          <p className="text-sm font-medium text-foreground">🤳 Selfie segurando o documento</p>
+          <p className="text-xs text-muted-foreground">Segure o documento ao lado do rosto</p>
+        </div>
+      </div>
+
+      <div className="bg-secondary/50 rounded-xl p-4 flex gap-3">
+        <ShieldCheck className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+        <p className="text-xs text-muted-foreground">
+          Seus documentos são analisados com segurança e não são compartilhados. A verificação garante um ambiente confiável para todos.
+        </p>
+      </div>
+    </div>,
   ];
 
   return (
@@ -443,7 +573,7 @@ const Onboarding = () => {
             }}
           >
             {step === totalSteps - 1
-              ? saving ? "Salvando..." : "Entrar no Elo 🙏"
+              ? saving ? "Enviando..." : "Enviar e verificar 🛡️"
               : "Continuar"}{" "}
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
