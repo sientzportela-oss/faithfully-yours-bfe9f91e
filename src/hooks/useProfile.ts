@@ -121,11 +121,12 @@ export const useDiscoverProfiles = () => {
 
       const excludeIds = [...new Set([...blockedIds, ...likedIds, user.id])];
 
-      // Fetch more profiles so we can score and rank them
+      // Fetch more profiles so we can score and rank them — only verified users
       let query = supabase
         .from("profiles")
         .select("*")
         .eq("ativo", true)
+        .eq("verificado", true)
         .not("nome", "is", "null")
         .limit(100);
 

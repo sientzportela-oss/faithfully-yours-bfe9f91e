@@ -154,9 +154,9 @@ const Onboarding = () => {
 
       toast({
         title: "Perfil criado com sucesso! 🙏",
-        description: "Que Deus abençoe sua jornada no Elo.",
+        description: "Agora vamos verificar sua identidade.",
       });
-      navigate("/app");
+      navigate("/app/verification");
     } catch (error: any) {
       toast({
         title: "Erro ao salvar",

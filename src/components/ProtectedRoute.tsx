@@ -1,13 +1,16 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate, useLocation } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
+import { useVerification } from "@/hooks/useVerification";
+import { ShieldCheck } from "lucide-react";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   const { data: profile, isLoading: profileLoading } = useProfile();
+  const { data: verification, isLoading: verificationLoading } = useVerification();
   const location = useLocation();
 
-  if (loading || profileLoading) {
+  if (loading || profileLoading || verificationLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-3">
@@ -20,10 +23,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!user) return <Navigate to="/auth" replace />;
 
-  // Allow access to onboarding page always
+  // Allow access to onboarding and verification pages always
   if (location.pathname === "/onboarding") return <>{children}</>;
 
-  // Redirect to onboarding if profile is incomplete
+  // Check profile completeness first
   const isComplete = profile?.nome && profile?.bio && profile?.cidade && profile?.estado && profile?.religião && profile?.intencao_relacionamento && profile?.frequencia_igreja && profile?.foto_perfil;
 
   if (!isComplete) {
@@ -36,7 +39,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           <div className="space-y-2">
             <h2 className="text-2xl font-serif font-semibold text-foreground">Perfil incompleto</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Para garantir conexões de qualidade, precisamos que você complete seu perfil antes de acessar o feed. Preencha todas as informações obrigatórias.
+              Para garantir conexões de qualidade, precisamos que você complete seu perfil antes de acessar o feed.
             </p>
           </div>
           <ul className="text-left text-sm text-muted-foreground space-y-1.5">
@@ -60,6 +63,45 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
+  // Allow verification page access
+  if (location.pathname === "/app/verification") return <>{children}</>;
+
+  // Check verification status — must be approved to access app
+  const verificationStatus = verification?.status;
+
+  if (!verification || verificationStatus === "rejected") {
+    // No verification submitted yet or rejected — redirect to verification
+    return <Navigate to="/app/verification" replace />;
+  }
+
+  if (verificationStatus === "pending") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background px-6">
+        <div className="max-w-md text-center space-y-6">
+          <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-8 h-8 text-accent" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-serif font-semibold text-foreground">Verificação em análise</h2>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Seu perfil está sendo verificado para manter o EloFaith seguro.
+              <br />Isso pode levar algumas horas.
+            </p>
+          </div>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <p className="text-xs text-muted-foreground italic">
+              "A verdade vos libertará" — João 8:32
+            </p>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Você receberá uma notificação quando a verificação for concluída.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // verificationStatus === "approved" — allow access
   return <>{children}</>;
 };
 
