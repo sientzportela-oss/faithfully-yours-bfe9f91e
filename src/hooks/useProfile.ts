@@ -46,13 +46,64 @@ export const useUpdateProfile = () => {
   });
 };
 
+/**
+ * Calculates a compatibility score (0-100) between the current user and a candidate.
+ * Higher = better match.
+ */
+const computeCompatibility = (
+  me: Profile,
+  candidate: Profile
+): number => {
+  let score = 0;
+
+  // Same city = +35, same state = +15
+  if (me.cidade && candidate.cidade && me.cidade.toLowerCase() === candidate.cidade.toLowerCase()) {
+    score += 35;
+  } else if (me.estado && candidate.estado && me.estado === candidate.estado) {
+    score += 15;
+  }
+
+  // Same religion = +25
+  if (me["religião"] && candidate["religião"] && me["religião"] === candidate["religião"]) {
+    score += 25;
+  }
+
+  // Age compatibility: within 5 years = +20, within 10 = +10
+  if (me.idade && candidate.idade) {
+    const diff = Math.abs(me.idade - candidate.idade);
+    if (diff <= 5) score += 20;
+    else if (diff <= 10) score += 10;
+  }
+
+  // Relationship intention match = +20
+  if (me.intencao_relacionamento && candidate.intencao_relacionamento) {
+    if (me.intencao_relacionamento === candidate.intencao_relacionamento) {
+      score += 20;
+    }
+    // Bonus if both want marriage
+    const marriageTerms = ["casamento", "Casamento"];
+    if (marriageTerms.includes(me.intencao_relacionamento) && marriageTerms.includes(candidate.intencao_relacionamento)) {
+      score += 5;
+    }
+  }
+
+  // Profile completeness bonus (photo, bio, church) = up to +10
+  if (candidate.foto_perfil) score += 3;
+  if (candidate.bio) score += 3;
+  if (candidate.frequencia_igreja) score += 2;
+  if (candidate.verificado) score += 2;
+
+  return Math.min(score, 100);
+};
+
 export const useDiscoverProfiles = () => {
   const { user } = useAuth();
+  const { data: myProfile } = useProfile();
 
   return useQuery({
-    queryKey: ["discover-profiles", user?.id],
+    queryKey: ["discover-profiles", user?.id, myProfile?.cidade, myProfile?.religião],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user || !myProfile) return [];
 
       // Get blocked user IDs
       const { data: blocked } = await supabase
@@ -70,21 +121,28 @@ export const useDiscoverProfiles = () => {
 
       const excludeIds = [...new Set([...blockedIds, ...likedIds, user.id])];
 
+      // Fetch more profiles so we can score and rank them
       let query = supabase
         .from("profiles")
         .select("*")
         .eq("ativo", true)
-        .limit(20);
+        .not("nome", "is", "null")
+        .limit(100);
 
-      // Supabase doesn't support NOT IN directly, use .not with filter
       if (excludeIds.length > 0) {
         query = query.not("id", "in", `(${excludeIds.join(",")})`);
       }
 
       const { data, error } = await query;
       if (error) throw error;
-      return data ?? [];
+
+      // Score and sort by compatibility (highest first)
+      const scored = (data ?? [])
+        .map((p) => ({ ...p, _score: computeCompatibility(myProfile, p) }))
+        .sort((a, b) => b._score - a._score);
+
+      return scored;
     },
-    enabled: !!user,
+    enabled: !!user && !!myProfile,
   });
 };
